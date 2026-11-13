@@ -1,0 +1,66 @@
+// ============================================================================
+// POWER BI STAR SCHEMA & DAX MEASURES - HR ATTRITION & RETENTION DASHBOARD
+// ============================================================================
+
+// 1. CALENDAR DIMENSION TABLE (Modeling -> New Table)
+Dim_Date = 
+ADDCOLUMNS(
+    CALENDAR(DATE(2015, 1, 1), DATE(2026, 12, 31)),
+    "Year", YEAR([Date]),
+    "Month_Name", FORMAT([Date], "MMM"),
+    "Month_Num", MONTH([Date]),
+    "Quarter", "Q" & FORMAT([Date], "Q")
+)
+
+// ============================================================================
+// CORE HEADCOUNT, ATTRITION & RETENTION MEASURES (_Measures Table)
+// ============================================================================
+
+Total Employees = COUNTROWS(hr_employee_attrition)
+
+Active Employees = 
+CALCULATE(
+    COUNTROWS(hr_employee_attrition),
+    hr_employee_attrition[Attrition] = "No"
+)
+
+Attrition Count = 
+CALCULATE(
+    COUNTROWS(hr_employee_attrition),
+    hr_employee_attrition[Attrition] = "Yes"
+)
+
+Attrition Rate % = 
+DIVIDE([Attrition Count], [Total Employees], 0)
+
+Retention Rate % = 
+DIVIDE([Active Employees], [Total Employees], 0)
+
+// ============================================================================
+// TENURE, COMPENSATION & SATISFACTION MEASURES
+// ============================================================================
+
+Avg Tenure (Years) = AVERAGE(hr_employee_attrition[Tenure_Years])
+
+Avg Annual CTC (INR) = AVERAGE(hr_employee_attrition[Annual_CTC_INR])
+
+Avg Job Satisfaction = AVERAGE(hr_employee_attrition[Job_Satisfaction])
+
+Overtime Attrition Rate % = 
+CALCULATE(
+    [Attrition Rate %],
+    hr_employee_attrition[OverTime] = "Yes"
+)
+
+Early Tenure Attrition % = 
+CALCULATE(
+    [Attrition Rate %],
+    hr_employee_attrition[Tenure_Years] <= 1
+)
+
+Estimated Attrition Replacement Cost (INR) = 
+// Industry benchmark: ~50% of annual CTC to backfill & onboard
+SUMX(
+    FILTER(hr_employee_attrition, hr_employee_attrition[Attrition] = "Yes"),
+    hr_employee_attrition[Annual_CTC_INR] * 0.50
+)
